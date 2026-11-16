@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model ledger_transactions {
+  id            String                   @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  type          ledger_transactions_type
+  category      String                   @db.VarChar(80)
+  note          String?                  @db.VarChar(255)
+  amount_php    Decimal                  @db.Decimal(12, 2)
+  goal_id       String?                  @db.Char(36)
+  tx_date       DateTime                 @db.Date
+  created_at    DateTime?                @default(now()) @db.Timestamp(0)
+  savings_goals savings_goals?           @relation(fields: [goal_id], references: [id], onUpdate: NoAction, map: "fk_ledger_goal")
+
+  @@index([goal_id], map: "fk_ledger_goal")
+}
+
+model payout_batches {
+  id              String                @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  label           String                @db.VarChar(120)
+  status          payout_batches_status @default(pending)
+  total_usd       Decimal               @default(0.00) @db.Decimal(10, 2)
+  applied_fx_rate Decimal               @default(63.5000) @db.Decimal(8, 4)
+  total_php       Decimal               @default(0.00) @db.Decimal(12, 2)
+  paid_at         DateTime?             @db.DateTime(0)
+  created_at      DateTime?             @default(now()) @db.Timestamp(0)
+  work_logs       work_logs[]
+}
+
+model projects {
+  id               String                    @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  name             String                    @db.VarChar(100)
+  default_pay_type projects_default_pay_type @default(hourly)
+  default_rate     Decimal                   @default(5.0000) @db.Decimal(10, 4)
+  accent_color     String?                   @default("#10B981") @db.VarChar(20)
+  created_at       DateTime?                 @default(now()) @db.Timestamp(0)
+}
+
+model savings_goals {
+  id                  String                @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  title               String                @db.VarChar(120)
+  target_php          Decimal               @db.Decimal(12, 2)
+  saved_php           Decimal               @default(0.00) @db.Decimal(12, 2)
+  accent_color        String?               @default("#06B6D4") @db.VarChar(20)
+  created_at          DateTime?             @default(now()) @db.Timestamp(0)
+  ledger_transactions ledger_transactions[]
+}
+
+model user_settings {
+  id                Int       @id @default(1)
+  daily_hour_cap    Decimal   @default(8.00) @db.Decimal(5, 2)
+  weekly_hour_cap   Decimal   @default(20.00) @db.Decimal(5, 2)
+  biweekly_hour_cap Decimal   @default(40.00) @db.Decimal(5, 2)
+  usd_to_php_rate   Decimal   @default(63.5000) @db.Decimal(8, 4)
+  cycle_start_day   Int       @default(1) @db.TinyInt
+  updated_at        DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model work_logs {
+  id               String               @id @default(dbgenerated("(uuid())")) @db.Char(36)
+  project_name     String               @db.VarChar(100)
+  queue_notes      String?              @db.VarChar(255)
+  work_date        DateTime             @db.Date
+  entry_mode       work_logs_entry_mode
+  start_time       DateTime?            @db.Time(0)
+  end_time         DateTime?            @db.Time(0)
+  duration_minutes Decimal              @db.Decimal(8, 2)
+  task_count       Int                  @default(0)
+  pay_type         work_logs_pay_type
+  rate_usd         Decimal              @db.Decimal(10, 4)
+  earned_usd       Decimal              @db.Decimal(10, 2)
+  batch_id         String?              @db.Char(36)
+  created_at       DateTime?            @default(now()) @db.Timestamp(0)
+  payout_batches   payout_batches?      @relation(fields: [batch_id], references: [id], onUpdate: NoAction, map: "fk_worklog_batch")
+
+  @@index([batch_id], map: "fk_worklog_batch")
+}
+
+enum ledger_transactions_type {
+  expense
+  goal_deposit
+}
+
+enum payout_batches_status {
+  pending
+  po_issued
+  invoiced
+  paid
+}
+
+enum projects_default_pay_type {
+  hourly
+  per_task
+}
+
+enum work_logs_entry_mode {
+  time_range
+  duration
+}
+
+enum work_logs_pay_type {
+  hourly
+  per_task
+}
