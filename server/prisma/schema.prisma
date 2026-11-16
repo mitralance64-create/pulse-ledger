@@ -8,11 +8,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
-
 model ledger_transactions {
   id            String                   @id @default(dbgenerated("(uuid())")) @db.Char(36)
   type          ledger_transactions_type
